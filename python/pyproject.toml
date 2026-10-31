@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "onlinewebdirectory"
+version = "0.1.0"
+description = "Check how a website treats AI agents before you fetch it, and report what you saw after."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["cryptography>=41"]
+keywords = ["ai-agents", "web-scraping", "robots-txt", "llms-txt", "bot-detection", "crawler", "fetch"]
+classifiers = ["Programming Language :: Python :: 3", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent"]
+
+[project.urls]
+Homepage = "https://onlinewebdirectory.net"
+Source = "https://github.com/onlinewebdirectory/owd-fetch"
+
+[tool.setuptools]
+packages = ["onlinewebdirectory"]
