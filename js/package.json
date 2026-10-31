@@ -12,10 +12,10 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test --test-timeout=20000 test/*.test.js"
   },
   "keywords": [
     "ai-agents",

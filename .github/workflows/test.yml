@@ -5,18 +5,20 @@ on: [push, pull_request]
 jobs:
   js:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
-        node: [18, 22]
+        node: [20, 22]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - run: cd js && node --test test/*.test.js
+      - run: cd js && node --test --test-timeout=20000 test/*.test.js
 
   python:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       matrix:
         python: ["3.9", "3.12"]

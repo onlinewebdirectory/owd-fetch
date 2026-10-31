@@ -7,7 +7,7 @@ A drop-in `fetch` for AI agents. Before fetching a website it asks [Online Web D
 - Respects owners: if a site's robots.txt tells all agents to stay out, it does not fetch unless you pass `force`. Everything else is fetched, with warnings.
 - Free: 10 lookups a day without a key, 100 a day once it has made its own key (no sign-up).
 
-## JavaScript (Node 18+, no dependencies, ES modules)
+## JavaScript (Node 20+, no dependencies, ES modules)
 
 ```bash
 npm install @onlinewebdirectory/fetch
