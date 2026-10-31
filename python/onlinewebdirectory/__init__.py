@@ -54,7 +54,7 @@ def _reset():
         _reported.clear()
 
 
-def _settings(base=None, home=None, timeout=1.5, report=True, lookup=True, force=False, **_):
+def _settings(base=None, home=None, timeout=3.0, report=True, lookup=True, force=False, **_):
     return {"base": (base or os.environ.get("OWD_BASE") or DEFAULT_BASE).rstrip("/"), "home": home or default_home(),
             "timeout": timeout, "report": report and os.environ.get("OWD_REPORT") != "0", "lookup": lookup, "force": force}
 

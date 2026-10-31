@@ -73,7 +73,7 @@ owd.after(url, status, headers, body)
 | `force` | `force` | false | fetch even when robots.txt disallows all agents |
 | `report` | `report` | true | report what was seen (also `OWD_REPORT=0`) |
 | `lookup` | `lookup` | true | ask the directory first |
-| `timeoutMs` | `timeout` | 1500 ms / 1.5 s | how long to wait for the directory |
+| `timeoutMs` | `timeout` | 3000 ms / 3 s | how long to wait for the directory (the answer is then cached for an hour) |
 | `fetch` | `fetch` | platform fetch / urllib | your own HTTP function |
 
 ## Privacy

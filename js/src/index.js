@@ -27,7 +27,7 @@ export function _reset() { lookups.clear(); reported.clear(); }
 const settings = (o = {}) => ({
   base: (o.base || process.env.OWD_BASE || DEFAULT_BASE).replace(/\/$/, ""),
   home: o.home || defaultHome(),
-  timeoutMs: o.timeoutMs ?? 1500,
+  timeoutMs: o.timeoutMs ?? 3000,
   report: o.report !== false && process.env.OWD_REPORT !== "0",
   lookup: o.lookup !== false,
   force: !!o.force,
