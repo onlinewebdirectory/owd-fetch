@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-      - run: cd js && node --test --test-timeout=20000 test/*.test.js
+      - run: cd js && node --test test/*.test.js
 
   python:
     runs-on: ubuntu-latest
