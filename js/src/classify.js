@@ -54,7 +54,9 @@ export function classify({ status, headers, body, finalUrl }) {
   if (vendor) return { access_posture: "bot_challenged", challenge_vendor: vendor };
   if (status === 429) {
     const out = { access_posture: "rate_limited" };
-    const retry = parseInt(header(headers, "Retry-After"), 10);
+    // Leading digits, like the server's Ruby to_i ("30abc" is 30, "1_000" is 1000).
+    const m = header(headers, "Retry-After").match(/^\s*\+?(\d[\d_]*)/);
+    const retry = m ? parseInt(m[1].replace(/_/g, ""), 10) : 0;
     if (retry >= 1 && retry <= 86_400) out.retry_after_s = String(retry);
     return out;
   }
