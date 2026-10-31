@@ -7,7 +7,7 @@ A drop-in `fetch` for AI agents. Before fetching a website it asks [Online Web D
 - Respects owners: if a site's robots.txt tells all agents to stay out, it does not fetch unless you pass `force`. Everything else is fetched, with warnings.
 - Free: 10 lookups a day without a key, 100 a day once it has made its own key (no sign-up).
 
-## JavaScript (Node 18+, no dependencies)
+## JavaScript (Node 18+, no dependencies, ES modules)
 
 ```bash
 npm install @onlinewebdirectory/fetch
@@ -47,7 +47,7 @@ r.status, r.text
 | `robots_partial` | robots.txt restricts some paths; check the path you need |
 | `directory_unavailable` | the directory did not answer in time; fetched without hints |
 
-`owd.page` is the site's page in the directory, so your agent can cite where it learned this. `owd.strategy` is the directory's full advice (`plain_http`, `headless_required`, `use_machine_interface`, `do_not_fetch`).
+`owd.page` is the site's page in the directory, so your agent can cite where it learned this. `owd.strategy` is the directory's full advice (`plain_http`, `headless_required`, `use_machine_interface`, `do_not_fetch`). `owd.reported` resolves (JavaScript: a Promise; Python: a Future) to the facts reported after the fetch, usually `{}`.
 
 When robots.txt disallows all agents, JavaScript throws `OwdRefused` and Python raises `owd.Refused` (with `host`, `reason` and `page`). Pass `force: true` / `force=True` to fetch anyway.
 
@@ -57,14 +57,16 @@ Use the two hooks around your own HTTP call:
 
 ```js
 import { before, after } from "@onlinewebdirectory/fetch";
-const advice = await before(url);                       // { fetch, warnings, page, strategy }
-await after(url, { status, headers, body });            // reports what you saw
+const advice = await before(url);                                        // { fetch, warnings, page, strategy }
+await after(url, { status, headers, body }, { clientClass: "headless_chrome" }); // reports what you saw
 ```
 
 ```python
 advice = owd.before(url)
-owd.after(url, status, headers, body)
+owd.after(url, status, headers, body, client_class="headless_chrome")
 ```
+
+`clientClass` / `client_class` says what fetched the page: `plain_http` (default), `headless_chrome`, `headful_chrome` or `curl_impersonate`.
 
 ## Options
 
@@ -74,11 +76,17 @@ owd.after(url, status, headers, body)
 | `report` | `report` | true | report what was seen (also `OWD_REPORT=0`) |
 | `lookup` | `lookup` | true | ask the directory first |
 | `timeoutMs` | `timeout` | 3000 ms / 3 s | how long to wait for the directory (the answer is then cached for an hour) |
-| `fetch` | `fetch` | platform fetch / urllib | your own HTTP function |
+| `bodyTimeoutMs` | | 3000 ms | how long the client may read an HTML page to classify it |
+| | `fetch_timeout` | 30 s | how long to wait for the page itself |
+| `fetch` | `fetch` | platform fetch / urllib | your own HTTP function. Python: `fetch(url, headers, timeout)` returning `owd.Response(status, headers, text, url)` |
+
+## What gets reported
+
+Only what is true of the whole site: the home page's posture (open, blocked, login, paywall, rate limited, bot wall, JavaScript needed), and a bot wall met on any page. Nothing is reported for a request that was not a GET, that sent an Authorization or Cookie header, or that was redirected to another site; JavaScript needs are judged only from HTML. Private names (`.local`, `.internal`, `.lan`, `.corp`, `.home.arpa`, `.localhost` and similar) and IP addresses are never looked up or reported.
 
 ## Privacy
 
-Only the hostname is sent for a lookup. A report sends the hostname and typed facts (for example `access_posture=bot_challenged`, `challenge_vendor=cloudflare`), signed with this machine's own key. Never the path, query, page content, headers, cookies or anything you sent. The key lives in `~/.config/onlinewebdirectory/key.json` (shared with the Online Web Directory skill; `OWD_HOME` moves it). Turn reporting off with `report: false` or `OWD_REPORT=0`.
+Only the hostname is sent for a lookup, with this machine's agent token once it has one (so free lookups count against its own allowance). A report sends the hostname and typed facts (for example `access_posture=bot_challenged`, `challenge_vendor=cloudflare`), signed with this machine's own key. Never the path, query, page content, headers, cookies or anything you sent. The key lives in `~/.config/onlinewebdirectory/key.json` (shared with the Online Web Directory skill; `OWD_HOME` moves it). Turn reporting off with `report: false` or `OWD_REPORT=0`.
 
 ## More
 

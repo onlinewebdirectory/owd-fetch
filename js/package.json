@@ -3,12 +3,37 @@
   "version": "0.1.0",
   "description": "Check how a website treats AI agents before you fetch it, and report what you saw after. A drop-in fetch for agents.",
   "type": "module",
-  "exports": { ".": "./src/index.js" },
-  "files": ["src/", "README.md", "LICENSE"],
-  "engines": { "node": ">=18" },
-  "scripts": { "test": "node --test" },
-  "keywords": ["ai-agents", "fetch", "web-scraping", "robots-txt", "llms-txt", "bot-detection", "crawler"],
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test --test-timeout=20000 test/*.test.js"
+  },
+  "keywords": [
+    "ai-agents",
+    "fetch",
+    "web-scraping",
+    "robots-txt",
+    "llms-txt",
+    "bot-detection",
+    "crawler"
+  ],
   "homepage": "https://onlinewebdirectory.net",
-  "repository": { "type": "git", "url": "git+https://github.com/onlinewebdirectory/owd-fetch.git", "directory": "js" },
-  "license": "MIT"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onlinewebdirectory/owd-fetch.git",
+    "directory": "js"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

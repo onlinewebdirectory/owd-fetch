@@ -21,7 +21,8 @@ MAX_CHARS = 200_000
 def _header(headers, name):
     if not headers:
         return ""
-    for k, v in dict(headers).items():
+    items = headers.items() if hasattr(headers, "items") else headers
+    for k, v in items:
         if k.lower() == name.lower():
             return str(v)
     return ""
@@ -66,16 +67,17 @@ def classify(status, headers, body, final_url=""):
         status = int(status)
     except (TypeError, ValueError):
         status = 0
+    if isinstance(body, (bytes, bytearray)):
+        body = bytes(body[: MAX_CHARS * 4]).decode("utf-8", "replace")
     text = str(body or "")[:MAX_CHARS]
     vendor = _challenge_vendor(status, headers, text)
     if vendor:
         return {"access_posture": "bot_challenged", "challenge_vendor": vendor}
     if status == 429:
         out = {"access_posture": "rate_limited"}
-        try:
-            retry = int(_header(headers, "Retry-After"))
-        except ValueError:
-            retry = 0
+        # Leading ASCII digits, like the server's Ruby to_i ("30abc" is 30, "1_000" is 1000).
+        m = re.match(r"\s*\+?([0-9][0-9_]*)", _header(headers, "Retry-After"))
+        retry = int(m.group(1).replace("_", "")) if m else 0
         if 1 <= retry <= 86_400:
             out["retry_after_s"] = str(retry)
         return out

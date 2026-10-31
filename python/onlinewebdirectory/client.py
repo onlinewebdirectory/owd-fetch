@@ -11,6 +11,9 @@ import urllib.request
 from datetime import datetime, timezone
 
 DEFAULT_BASE = "https://onlinewebdirectory.net"
+# Private and reserved names: never looked up or reported.
+PRIVATE_SUFFIXES = ("local", "internal", "lan", "home.arpa", "corp", "localhost", "localdomain", "test", "invalid", "intranet", "private", "home")
+_cannot_save_key = False
 
 try:
     from cryptography.hazmat.primitives import serialization
@@ -36,7 +39,28 @@ def host_of(url):
         ipaddress.ip_address(host)
         return None
     except ValueError:
-        return host
+        pass
+    try:
+        host = host.encode("idna").decode("ascii")  # the same ASCII form the JavaScript package sends
+    except UnicodeError:
+        return None
+    if any(host == s or host.endswith("." + s) for s in PRIVATE_SUFFIXES):
+        return None
+    return host
+
+
+def well_formed(data):
+    """Only a reply shaped like the directory's answer is used."""
+    if not isinstance(data, dict):
+        return False
+    if "strategy" in data and not isinstance(data["strategy"], dict):
+        return False
+    if "facts" in data and not (isinstance(data["facts"], list) and all(isinstance(f, dict) for f in data["facts"])):
+        return False
+    rc = data.get("registry_check")
+    if "registry_check" in data and not (isinstance(rc, dict) and isinstance(rc.get("values", {}), dict)):
+        return False
+    return True
 
 
 def _call(base, method, path, body=None, token=None, timeout=5.0):
@@ -67,52 +91,76 @@ def _sign(private_key, text):
     return _b64(private_key.sign(text.encode()))
 
 
+def _reset_client():
+    global _cannot_save_key
+    _cannot_save_key = False
+
+
+def _read_key(path):
+    try:
+        with open(path) as f:
+            k = json.load(f)
+        if not isinstance(k, dict) or not isinstance(k.get("public_key"), str) or not isinstance(k.get("private_pem"), str):
+            return None
+        if CAN_SIGN:
+            k["private_key"] = serialization.load_pem_private_key(k["private_pem"].encode(), password=None)
+        return k
+    except Exception:  # unreadable, not JSON, not a key: left untouched, no key used
+        return None
+
+
 def load_or_create_key(home=None, base=DEFAULT_BASE, register=False, source="owd-fetch-py", timeout=5.0):
     """The saved key, or a newly registered one when register is True. A key file
     that cannot be read is left untouched and no key is used."""
+    global _cannot_save_key
     home = home or default_home()
     path = os.path.join(home, "key.json")
     if os.path.exists(path):
-        try:
-            k = json.load(open(path))
-            if not k.get("public_key") or not k.get("private_pem"):
-                return None
-            if CAN_SIGN:
-                k["private_key"] = serialization.load_pem_private_key(k["private_pem"].encode(), password=None)
-            return k
-        except (ValueError, OSError, TypeError):
-            return None
-    if not register or not CAN_SIGN:
+        return _read_key(path)
+    if not register or not CAN_SIGN or _cannot_save_key:
+        return None
+    # Prove the key can be saved before registering, so a read-only home never
+    # registers a new agent on every report.
+    try:
+        os.makedirs(home, mode=0o700, exist_ok=True)
+        probe = os.path.join(home, ".write-test-%d" % os.getpid())
+        open(probe, "w").close()
+        os.remove(probe)
+    except OSError:
+        _cannot_save_key = True
         return None
     priv = Ed25519PrivateKey.generate()
     public_key = _b64(priv.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw))
     signature = _sign(priv, f"onlinewebdirectory:register:{public_key}")
     try:
         status, data = _call(base, "POST", "/v1/agents", {"public_key": public_key, "signature": signature, "source": source}, timeout=timeout)
-    except (OSError, urllib.error.URLError):
+    except Exception:
         return None
-    if status != 201 or not (data or {}).get("read_token"):
+    if status != 201 or not isinstance(data, dict) or not data.get("read_token"):
         return None
-    os.makedirs(home, mode=0o700, exist_ok=True)
-    if os.path.exists(path):  # another process won the race
-        return load_or_create_key(home=home, base=base, register=False)
     pem = priv.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
     saved = {"public_key": public_key, "private_pem": pem, "handle": data.get("handle"),
              "read_token": data.get("read_token"), "referral_url": data.get("referral_url")}
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:  # another process won the race
+        return _read_key(path)
+    except OSError:
+        _cannot_save_key = True
+        return None
     with os.fdopen(fd, "w") as f:
         json.dump(saved, f, indent=2)
     saved["private_key"] = priv
     return saved
 
 
-def lookup(host, base=DEFAULT_BASE, key=None, timeout=1.5):
+def lookup(host, base=DEFAULT_BASE, key=None, timeout=3.0):
     """{"ok": True, "data": {...}} or {"ok": False}. Never raises."""
     try:
         status, data = _call(base, "GET", "/v1/origins/" + urllib.parse.quote(host, safe=""), token=(key or {}).get("read_token"), timeout=timeout)
     except Exception:  # timeouts, DNS, refused: fail open
         return {"ok": False}
-    return {"ok": True, "data": data} if status == 200 and data else {"ok": False, "status": status}
+    return {"ok": True, "data": data} if status == 200 and well_formed(data) else {"ok": False, "status": status}
 
 
 def report(host, facts, base=DEFAULT_BASE, key=None, client_class="plain_http", timeout=5.0):
