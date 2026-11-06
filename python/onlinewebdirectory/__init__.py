@@ -101,7 +101,15 @@ def _remember(d, key, value):
     d[key] = value
 
 
-def _settings(base=None, home=None, timeout=3.0, report=True, lookup=True, force=False, client_class="plain_http", **_):
+_warned_options = set()
+
+
+def _settings(base=None, home=None, timeout=3.0, report=True, lookup=True, force=False, client_class="plain_http", **unknown):
+    for k in unknown:
+        if k not in _warned_options:
+            _warned_options.add(k)
+            import warnings
+            warnings.warn(f"onlinewebdirectory: unknown option {k!r} is ignored", stacklevel=3)
     return {"base": (base or os.environ.get("OWD_BASE") or DEFAULT_BASE).rstrip("/"), "home": home or default_home(),
             "timeout": timeout, "report": report and os.environ.get("OWD_REPORT") != "0", "lookup": lookup,
             "force": force, "client_class": client_class}

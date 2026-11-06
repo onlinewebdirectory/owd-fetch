@@ -40,7 +40,7 @@ class ClientTest(unittest.TestCase):
             self.assertEqual(k1["public_key"], k2["public_key"])
             self.assertEqual(1, len([r for r in reqs if r["url"] == "/v1/agents"]))
             self.assertEqual("owd-fetch-py", json.loads(reqs[0]["body"])["source"])
-            self.assertEqual(0o600, stat.S_IMODE(os.stat(os.path.join(home, "key.json")).st_mode))
+            self.assertEqual(0o600, stat.S_IMODE(os.stat(client.key_file_for(home, base)).st_mode))
         finally:
             close()
 
@@ -50,7 +50,7 @@ class ClientTest(unittest.TestCase):
     def test_corrupt_key_file_left_alone(self):
         base, reqs, close = directory(); home = tempfile.mkdtemp()
         try:
-            path = os.path.join(home, "key.json")
+            path = client.key_file_for(home, base)
             open(path, "w").write("{not json")
             self.assertIsNone(client.load_or_create_key(home=home, base=base, register=True))
             self.assertEqual("{not json", open(path).read())
@@ -96,7 +96,7 @@ class ClientTest(unittest.TestCase):
         base, _, close = directory(); home = tempfile.mkdtemp()
         try:
             client.load_or_create_key(home=home, base=base, register=True)
-            saved = json.load(open(os.path.join(home, "key.json")))
+            saved = json.load(open(client.key_file_for(home, base)))
             self.assertTrue({"public_key", "private_pem", "handle", "read_token"} <= set(saved))
             self.assertTrue(saved["private_pem"].startswith("-----BEGIN PRIVATE KEY-----"))
         finally:

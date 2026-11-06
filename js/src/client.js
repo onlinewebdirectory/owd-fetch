@@ -40,11 +40,20 @@ async function call(base, method, path, body, token, timeoutMs) {
   return { status: res.status, data };
 }
 
+// One key per directory address: a key made against a test server is never
+// reused against the real directory (which would reject every report).
+export function keyFileFor(home, base) {
+  let u;
+  try { u = new URL(base); } catch { return join(home, "key.json"); }
+  if (u.origin === new URL(DEFAULT_BASE).origin) return join(home, "key.json");
+  return join(home, `key-${u.hostname}${u.port ? "-" + u.port : ""}.json`.replace(/[^\w.-]/g, "_"));
+}
+
 // The saved key, or a newly registered one when register is true. A key file
 // that cannot be read is left untouched and no key is used, so a broken file
 // never gets silently replaced by a new identity.
 export async function loadOrCreateKey({ home = defaultHome(), base = DEFAULT_BASE, register = false, source = "owd-fetch-js", timeoutMs = 5000 } = {}) {
-  const file = join(home, "key.json");
+  const file = keyFileFor(home, base);
   if (existsSync(file)) {
     try {
       const k = JSON.parse(readFileSync(file, "utf8"));

@@ -33,7 +33,17 @@ function remember(map, key, value) {
   map.set(key, value);
 }
 
-const settings = (o = {}) => ({
+const KNOWN = new Set(["base", "home", "timeoutMs", "bodyTimeoutMs", "report", "lookup", "force", "clientClass", "fetch"]);
+const warnedOptions = new Set();
+function warnUnknown(o) {
+  for (const k of Object.keys(o)) {
+    if (KNOWN.has(k) || warnedOptions.has(k)) continue;
+    warnedOptions.add(k);
+    console.warn(`@onlinewebdirectory/fetch: unknown option "${k}" is ignored (known: ${[...KNOWN].join(", ")})`);
+  }
+}
+
+const settings = (o = {}) => (warnUnknown(o), {
   base: (o.base || process.env.OWD_BASE || DEFAULT_BASE).replace(/\/$/, ""),
   home: o.home || defaultHome(),
   timeoutMs: o.timeoutMs ?? 3000,

@@ -56,7 +56,7 @@ class ReviewTest(unittest.TestCase):
         for content in ["null", "[]", '"x"', '{"public_key": "a", "private_pem": 5}', '{"public_key": "a", "private_pem": "not a pem"}']:
             owd._reset()
             home = tempfile.mkdtemp()
-            open(os.path.join(home, "key.json"), "w").write(content)
+            open(client.key_file_for(home, self.base), "w").write(content)
             r = owd.get("https://k.example/", base=self.base, home=home, fetch=resp(200, "ok"))
             self.assertEqual(200, r.status, content)
 
@@ -142,3 +142,16 @@ class ReviewTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MinorTest(unittest.TestCase):
+    def test_key_file_per_directory_address(self):
+        self.assertEqual(os.path.join("/h", "key.json"), client.key_file_for("/h", "https://onlinewebdirectory.net"))
+        self.assertEqual(os.path.join("/h", "key-127.0.0.1-4000.json"), client.key_file_for("/h", "http://127.0.0.1:4000"))
+
+    def test_mistyped_option_warns(self):
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            owd._settings(timeout_ms=5)
+        self.assertTrue(any("timeout_ms" in str(x.message) for x in w))

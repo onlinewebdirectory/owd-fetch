@@ -7,6 +7,7 @@ import json
 import os
 import urllib.error
 import urllib.parse
+import re
 import urllib.request
 from datetime import datetime, timezone
 
@@ -91,6 +92,16 @@ def _sign(private_key, text):
     return _b64(private_key.sign(text.encode()))
 
 
+def key_file_for(home, base):
+    """One key per directory address, so a test server's key never meets the real directory."""
+    u = urllib.parse.urlsplit(base or DEFAULT_BASE)
+    d = urllib.parse.urlsplit(DEFAULT_BASE)
+    if (u.scheme, u.netloc) == (d.scheme, d.netloc):
+        return os.path.join(home, "key.json")
+    name = "key-%s%s.json" % (u.hostname or "x", "-%d" % u.port if u.port else "")
+    return os.path.join(home, re.sub(r"[^\w.-]", "_", name))
+
+
 def _reset_client():
     global _cannot_save_key
     _cannot_save_key = False
@@ -114,7 +125,7 @@ def load_or_create_key(home=None, base=DEFAULT_BASE, register=False, source="owd
     that cannot be read is left untouched and no key is used."""
     global _cannot_save_key
     home = home or default_home()
-    path = os.path.join(home, "key.json")
+    path = key_file_for(home, base)
     if os.path.exists(path):
         return _read_key(path)
     if not register or not CAN_SIGN or _cannot_save_key:

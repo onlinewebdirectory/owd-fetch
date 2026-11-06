@@ -128,3 +128,22 @@ test("minor: Retry-After parses like the server (leading digits)", () => {
   assert.equal(classify({ status: 429, headers: { "Retry-After": "30abc" }, body: "" }).retry_after_s, "30");
   assert.equal(classify({ status: 429, headers: { "Retry-After": "1_000" }, body: "" }).retry_after_s, "1000");
 });
+
+test("minor: a key made for another directory address is kept apart from the real one", async () => {
+  const { keyFileFor } = await import("../src/client.js");
+  assert.equal(keyFileFor("/h", "https://onlinewebdirectory.net"), join("/h", "key.json"));
+  assert.equal(keyFileFor("/h", "http://127.0.0.1:4000"), join("/h", "key-127.0.0.1-4000.json"));
+  assert.equal(keyFileFor("/h", "https://staging.example.com/"), join("/h", "key-staging.example.com.json"));
+});
+
+test("minor: a mistyped option is warned about, once", async () => {
+  const warned = [];
+  const orig = console.warn;
+  console.warn = (m) => warned.push(String(m));
+  try {
+    await before("https://open.example/", { base: dir.base, home, timeout_ms: 5, timeoutMs: 100 });
+    await before("https://open.example/", { base: dir.base, home, timeout_ms: 5 });
+  } finally { console.warn = orig; }
+  assert.equal(warned.length, 1);
+  assert.match(warned[0], /timeout_ms/);
+});

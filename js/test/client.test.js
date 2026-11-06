@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createPublicKey, verify } from "node:crypto";
-import { hostOf, loadOrCreateKey, lookup, report } from "../src/client.js";
+import { hostOf, loadOrCreateKey, lookup, report, keyFileFor } from "../src/client.js";
 import { startServer } from "./helpers/server.js";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "owd-"));
@@ -31,7 +31,7 @@ test("a key is registered once, saved with mode 600, then reused", async () => {
   assert.equal(k2.public_key, k1.public_key);
   assert.equal(s.requests.filter((r) => r.url === "/v1/agents").length, 1);
   assert.equal(JSON.parse(s.requests[0].body).source, "owd-fetch-js");
-  assert.equal(statSync(join(home, "key.json")).mode & 0o777, 0o600);
+  assert.equal(statSync(keyFileFor(home, s.base)).mode & 0o777, 0o600);
   await s.close();
 });
 
@@ -41,9 +41,9 @@ test("without register, no key is made", async () => {
 
 test("a corrupt key file is left alone and no key is used", async () => {
   const s = await directory(); const home = tmp();
-  writeFileSync(join(home, "key.json"), "{not json");
+  writeFileSync(keyFileFor(home, s.base), "{not json");
   assert.equal(await loadOrCreateKey({ home, base: s.base, register: true }), null);
-  assert.equal(readFileSync(join(home, "key.json"), "utf8"), "{not json");
+  assert.equal(readFileSync(keyFileFor(home, s.base), "utf8"), "{not json");
   assert.equal(s.requests.length, 0);
   await s.close();
 });
